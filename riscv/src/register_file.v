@@ -15,10 +15,10 @@ module RegisterFile#(
     input wire  [4:0] rs2Addr,
     output wire [31:0] rs1Value,
     output wire [ROB_WIDTH-1:0] rs1Rename,
-    output wire rs1Valid,
+    output wire rs1Busy,
     output wire [31:0] rs2Value,
     output wire [ROB_WIDTH-1:0] rs2Rename,
-    output wire rs2Valid,
+    output wire rs2Busy,
 
     // reorder buffer
     input wire  writeFlag,
@@ -33,16 +33,16 @@ reg [ROB_WIDTH-1:0] reorder [31:0];
 
 // deal with rs1 & rs2
 assign rs1Value = registers[rs1Addr];
-assign rs1Valid = ~busy[rs1Addr];
+assign rs1Busy= busy[rs1Addr];
 assign rs1Rename = reorder[rs1Addr];
 assign rs2Value = registers[rs2Addr];
-assign rs2Valid = ~busy[rs2Addr];
+assign rs2Busy = busy[rs2Addr];
 assign rs2Rename = reorder[rs2Addr];
 
 integer i;
 always @(posedge clockIn) begin
     if (resetIn) begin
-        for (i = 0; i < 32; i++) begin
+        for (i = 0; i < 32; i = i+1) begin
             registers[i] <= 0;
             busy[i] <= 1'b0;
             reorder[i] <= 0;
