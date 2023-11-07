@@ -116,16 +116,22 @@ assign calcSlot = ready[0] ? 0 :
 assign rs1 = Vj[calcSlot];
 assign rs2 = Vk[calcSlot];
 wire [3:0] calcOp = op[calcSlot];
+wire hasCalc = ready != 0;
 
-// send out calculation result
-assign outFlag = ready != 0;
-assign outVal = aluRes[calcOp];
-assign outDest = dest[calcSlot];
+// calculation result to send out
+reg outFlagReg;
+reg [31:0] outValReg;
+reg [ROB_WIDTH-1:0] outDestReg;
+assign outFlag = outFlagReg;
+assign outVal = outValReg;
+assign outDest = outDestReg;
 
 integer i;
 always @(posedge clockIn) begin
-    if (resetIn)
+    if (resetIn) begin
         busy <= 0;
+        outFlagReg <= 1'b0;
+    end
     else if (readyIn) begin
         // add entry
         if (addFlag) begin
@@ -139,6 +145,12 @@ always @(posedge clockIn) begin
             Qk[freeSlot] <= addQk;
             dest[freeSlot] <= addDest;
         end
+        // calculate
+        outFlagReg <= hasCalc;
+        outValReg <= aluRes[calcSlot];
+        outDestReg <= dest[calcSlot];
+        if (hasCalc)
+            busy[calcSlot] <= 1'b0;
         // update Vj & Vk from lsb
         if (lsbFlag)
             for (i = 0; i < RS_SIZE; i = i + 1) 
@@ -153,8 +165,7 @@ always @(posedge clockIn) begin
                     end
                 end
         // update Vj & Vk from alu
-        if (outFlag) begin
-            busy[calcSlot] <= 1'b0;
+        if (outFlag)
             for (i = 0; i < RS_SIZE; i = i + 1)
                 if (busy[i]) begin
                     if (QjBusy[i] && Qj[i] == outDest) begin
@@ -166,7 +177,6 @@ always @(posedge clockIn) begin
                         Vk[i] <= outVal;
                     end
                 end
-        end
     end
 end
 
