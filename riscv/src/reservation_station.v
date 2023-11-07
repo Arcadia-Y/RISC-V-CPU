@@ -24,7 +24,6 @@ module ReservationStation#(
     input wire  [31:0] lsbVal,
     input wire  [ROB_WIDTH-1:0] lsbDest,
 
-
     // write results & forward
     output wire outFlag,
     output wire [31:0] outVal,
