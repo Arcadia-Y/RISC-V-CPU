@@ -8,16 +8,16 @@ Below is the diagram for the CPU.
 graph 
 Mem[Memory]
 ICache[Instruction Cache]
-DCache[Data Cache]
 IU[Instruction Unit & PC]
 LSB[Load Store Buffer]
 RF[Register File]
 RS[Reservation Station & ALU]
 ROB[Reorder Buffer]
 Predictor[Branch Predictor]
+MemCtrl[Memory Controller]
 
-Mem <--> ICache
-Mem <--> DCache
+Mem <--> MemCtrl
+ICache <--> MemCtrl
 ICache <--> IU
 
 IU <--> RS
@@ -29,16 +29,14 @@ IU <--> Predictor
 RS <--> ROB
 RS <--> LSB
 LSB <--> ROB
-LSB <--> DCache
+LSB <--> MemCtrl
 ROB --> RF
 ROB --> Predictor
 ```
 Since the CPU only contains one ALU and one LSB, we connect every two of RS, LSB and ROB for data communication and forwarding, instead of using a Common Data Bus. 
 
-### Cache
-Cache includes Instruction Cache (ICache) and Data Cache (DCache).
-ICache is used to read instruction.
-DCache is used to load and store data from memory. All load/stores should be through DCache.
+### Memory Controller & ICache
+Based on the characristics of the RAM provided, only instruction data is cached by ICache. Memory Controller handles logical process regarding memory I/O request from ICache and Load Store Buffer.
 
 ### Instruction Unit
 Instruction unit consists of Program Counter (PC) and some logical units.
