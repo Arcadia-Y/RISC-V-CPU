@@ -154,11 +154,11 @@ always @(posedge clockIn) begin
         if (lsbFlag)
             for (i = 0; i < RS_SIZE; i = i + 1) 
                 if (busy[i]) begin
-                    if (QjBusy[i] && Qj[i] == lsbDest) begin
+                    if (QjBusy[i] & (Qj[i] == lsbDest)) begin
                         QjBusy[i] <= 1'b0;
                         Vj[i] <= lsbVal;
                     end
-                    if (QkBusy[i] && Qk[i] == lsbDest) begin
+                    if (QkBusy[i] & (Qk[i] == lsbDest)) begin
                         QkBusy[i] <= 1'b0;
                         Vk[i] <= lsbVal;
                     end
@@ -167,11 +167,11 @@ always @(posedge clockIn) begin
         if (outFlag)
             for (i = 0; i < RS_SIZE; i = i + 1)
                 if (busy[i]) begin
-                    if (QjBusy[i] && Qj[i] == outDest) begin
+                    if (QjBusy[i] & (Qj[i] == outDest)) begin
                         QjBusy[i] <= 1'b0;
                         Vj[i] <= outVal;
                     end
-                    if (QkBusy[i] && Qk[i] == outDest) begin
+                    if (QkBusy[i] & (Qk[i] == outDest)) begin
                         QkBusy[i] <= 1'b0;
                         Vk[i] <= outVal;
                     end
