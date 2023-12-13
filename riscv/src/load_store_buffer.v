@@ -50,7 +50,7 @@ parameter LSB_SIZE = 2**LSB_WIDTH;
 
 /*  op[3]: 0 for load, 1 for store
  *  op[2]: 0 for signed, 1 for unsigned
- *  op[1:0]: 00 for byte, 01 for half word, 10 for word
+ *  op[1:0]: 00 for byte, 01 for half word, 11 for word
  *  Vj: rs1 for load and store
  *  Vk: rs2 for store
  */

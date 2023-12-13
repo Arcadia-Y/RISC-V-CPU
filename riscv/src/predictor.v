@@ -6,8 +6,12 @@ module BranchPredictor#(
     input wire  resetIn,
     input wire  clockIn,
     input wire  readyIn,
+    
+    // instruction unit
     input wire [31:0] predictAddr,
     output wire jump,
+
+    // ROB
     input wire  updateFlag,
     input wire [31:0] updateAddr,
     input wire  updateVal
