@@ -7,6 +7,9 @@ module LoadStoreBuffer#(
     input wire  resetIn,
     input wire  readyIn,
 
+    // for wrong branch prediction
+    input wire  clearIn,
+
     // instruction unit
     input wire  addFlag,
     input wire  [3:0] addOp,
@@ -52,7 +55,8 @@ parameter LSB_SIZE = 2**LSB_WIDTH;
  *  Vk: rs2 for store
  */
 reg [3:0] op [LSB_SIZE-1:0];
-reg [LSB_SIZE-1:0] ready;
+reg [LSB_SIZE-1:0] busy;
+reg [LSB_SIZE-1:0] commited; // only for store
 reg [31:0] Vj [LSB_SIZE-1:0];
 reg [31:0] Vk [LSB_SIZE-1:0];
 reg [LSB_SIZE-1:0] QjBusy;
@@ -64,14 +68,14 @@ reg [ROB_WIDTH-1:0] dest [LSB_SIZE-1:0];
 // FIFO
 reg [LSB_WIDTH-1:0] head;
 reg [LSB_WIDTH-1:0] tail;
-reg fullReg;
 
 reg memOutReg;
 reg outFlagReg;
 reg [31:0] outValReg;
 reg [ROB_WIDTH-1:0] outDestReg;
+reg [LSB_SIZE-1:0] lastCommit;
 
-assign full = fullReg;
+assign full = (tail == head) & busy[0];
 assign memOutFlag = memOutReg & ~memOkFlag; // to avoid duplicate read/write
 assign outFlag = outFlagReg;
 assign outVal = outValReg;
@@ -84,7 +88,6 @@ wire nextHead = head + 1'b1;
 wire nextTail = tail + 1'b1;
 wire headLoad = ~op[head][3];
 wire headUnsigned = op[head][2];
-wire notEmpty = full | (head != tail);
 wire [31:0] toCommit = headUnsigned ? memDataIn :
                        head[1] ? memDataIn :
                        head[0] ? {{16{memDataIn[15]}}, memDataIn[15:0]} :
@@ -93,10 +96,10 @@ wire [31:0] toCommit = headUnsigned ? memDataIn :
 integer i;
 always @(posedge clockIn) begin
     if (resetIn) begin
-        ready <= 0;
+        busy <= 0;
+        commited <= 0;
         head <= 0;
         tail <= 0;
-        fullReg <= 1'b0;
         memOutReg <= 1'b0;
         outFlagReg <= 1'b0;
         for (i = 0; i < LSB_SIZE; i = i + 1) begin
@@ -104,11 +107,29 @@ always @(posedge clockIn) begin
             QkBusy[i] <= 1'b0;
         end
     end
+    else if (clearIn & readyIn & busy[head]) begin
+        for (i = 0; i < LSB_SIZE; i = i + 1)
+            if (~commited[i])
+                busy[i] <= 1'b0;
+        if (headLoad) begin
+            tail <= head;
+            memOutReg <= 1'b0;
+        end else begin
+            tail <= lastCommit + 1'b1;
+            if (memOutReg & memOkFlag) begin // store complete
+                memOutReg <= 1'b0;
+                busy[head] <= 1'b0;
+                commited[head] <= 1'b0;
+                head <= nextHead;
+            end
+        end
+    end
     else if (readyIn) begin
         // add entry
         if (addFlag & ~full) begin
+            busy[tail] <= 1'b1;
             op[tail] <= addOp;
-            ready[tail] <= 1'b0;
+            commited[tail] <= 1'b0;
             Vj[tail] <= addVj;
             Vk[tail] <= addVk;
             QjBusy[tail] <= addQjBusy;
@@ -118,30 +139,29 @@ always @(posedge clockIn) begin
             imm[tail] <= addImm;
             dest[tail] <= addDest;
             tail <= nextTail;
-            if (nextTail == head)
-                fullReg <= 1'b1;
         end
         // process load/store
-        if (notEmpty) begin
+        if (busy[head]) begin
             if (headLoad) begin // load
                 if (memOutReg & memOkFlag) begin // commit
                     outFlagReg <= 1'b1;
                     outValReg <= toCommit;
                     outDestReg <= dest[head];
                     memOutReg <= 1'b0;
+                    busy[head] <= 1'b0;
                     head <= nextHead;
-                    fullReg <= 1'b0;
                 end else if (~memOutReg) begin // before loading
                     memOutReg <= QjBusy[head];
                 end
             end else begin // store
                 if (memOutReg & memOkFlag) begin // store complete
                     memOutReg <= 1'b0;
+                    busy[head] <= 1'b0;
+                    commited[head] <= 1'b0;
                     head <= nextHead;
-                    fullReg <= 1'b0;
-                end else if (~memOutReg) begin // before storing
-                    if (robFLag && robDest == dest[head])
-                        memOutReg <= 1'b1;
+                end else if (~memOutReg & (commited[head] | 
+                    (robFLag & (dest[head] == robDest)))) begin // before storing
+                    memOutReg <= 1'b1;
                 end
             end
         end
@@ -171,6 +191,14 @@ always @(posedge clockIn) begin
                     Qk[i] <= outVal;
                 end
             end
+        end
+        // update commited from rob
+        if (robFLag) begin
+            for (i = 0; i < LSB_SIZE; i = i + 1)
+                if (busy[i] & (dest[i] == robDest) & ~commited[i]) begin
+                    commited[i] <= 1'b1;
+                    lastCommit <= i;
+                end
         end
     end
 end
