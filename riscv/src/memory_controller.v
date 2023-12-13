@@ -113,7 +113,7 @@ always @(posedge clockIn) begin
                 2'b10: buffer[15:8] <= ramIn;
                 2'b11: buffer[23:16] <= ramIn;
                 2'b00: begin
-                    case (lsbOp)
+                    case (endPos)
                         2'b00: buffer[7:0] <= ramIn; // byte
                         2'b01: buffer[15:8] <= ramIn; // halfword
                         default: buffer[31:24] <= ramIn; // word
