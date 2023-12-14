@@ -47,9 +47,9 @@ parameter LTU = 4'b1100;
 parameter GEU = 4'b1101;
 
 // ALU Logic
-wire [31:0] rs1;
-wire [31:0] rs2;
-wire [31:0] aluRes[13:0];
+reg [31:0] rs1;
+reg [31:0] rs2;
+wire [31:0] aluRes [13:0];
 assign aluRes[ADD] = rs1 + rs2;
 assign aluRes[SUB] = rs1 - rs2;
 assign aluRes[SLL] = rs1 << rs2;
@@ -112,9 +112,9 @@ assign calcSlot = ready[0] ? 0 :
                   ready[13] ? 13 :
                   ready[14] ? 14 :
                   15;
-assign rs1 = Vj[calcSlot];
-assign rs2 = Vk[calcSlot];
-wire [3:0] calcOp = op[calcSlot];
+reg calcValid;
+reg [3:0] calcOp;
+reg [ROB_WIDTH-1:0] calcDest;
 wire hasCalc = ready != 0;
 
 // calculation result to send out
@@ -130,6 +130,10 @@ always @(posedge clockIn) begin
     if (resetIn) begin
         busy <= 0;
         outFlagReg <= 1'b0;
+        calcValid <= 1'b0;
+        rs1 <= 0;
+        rs2 <= 0;
+        calcOp <= 0;
     end
     else if (readyIn) begin
         // add entry
@@ -144,12 +148,16 @@ always @(posedge clockIn) begin
             Qk[freeSlot] <= addQk;
             dest[freeSlot] <= addDest;
         end
-        // calculate
-        outFlagReg <= hasCalc;
-        outValReg <= aluRes[calcSlot];
-        outDestReg <= dest[calcSlot];
+        // prepare next rs1, rs2
+        calcValid <= hasCalc;
+        rs1 <= Vj[calcSlot];
+        rs2 <= Vk[calcSlot];
         if (hasCalc)
             busy[calcSlot] <= 1'b0;
+        // calculate and send out result
+        outFlagReg <= calcValid;
+        outValReg <= aluRes[calcOp];
+        outDestReg <= calcDest;
         // update Vj & Vk from lsb
         if (lsbFlag)
             for (i = 0; i < RS_SIZE; i = i + 1) 
