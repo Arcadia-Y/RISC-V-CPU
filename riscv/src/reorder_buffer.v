@@ -14,13 +14,12 @@ module ReorderBuffer#(
     input wire  [1:0] addType,
     input wire  [4:0] addDest,
     input wire  addJump, // predicted jump signal
-    input wire  [31:0] addPC, // pc to set for wrong prediction, pc+4 for JALR
+    input wire  [31:0] addPC, // pc to set for wrong prediction
     input wire  [31:0] addInsAddr, // the instruction address
     input wire  addValueFlag, // for lui, auipc
     input wire  [31:0] addValue, 
     output wire [ROB_WIDTH-1:0] freeId,
     output wire full,
-    output wire setPCFlag,
     output wire [31:0] setPCVal,
 
     // rs1 & rs2 (instruction unit)
@@ -59,11 +58,10 @@ parameter ROB_SIZE = 2**ROB_WIDTH;
 reg [ROB_WIDTH-1:0] busy;
 reg [ROB_WIDTH-1:0] jump;
 reg [ROB_WIDTH-1:0] ready;
-parameter BRANCH = 2'b00;
-parameter JALR = 2'b01;
-parameter STORE = 2'b10;
-parameter OTHER = 2'b11;
-reg [1:0] type [ROB_SIZE-1:0];
+parameter BRANCH = 2'b10;
+parameter STORE = 2'b11;
+parameter OTHER = 2'b00;
+reg [1:0] insType [ROB_SIZE-1:0];
 reg [4:0] dest [ROB_SIZE-1:0];
 reg [31:0] value [ROB_SIZE-1:0];
 reg [31:0] PC [ROB_SIZE-1:0];
@@ -79,7 +77,6 @@ reg [31:0] commitAddr;
 reg [4:0] commitDest;
 reg [31:0] commitVal;
 reg clearReg;
-reg setPCFlagReg;
 reg [31:0] setPCReg;
 
 assign clear = clearReg;
@@ -90,7 +87,6 @@ assign rs1Val = value[rs1Id];
 assign rs2Busy = ~ready[rs2Id];
 assign rs2Val = value[rs2Id];
 
-assign setPCFlag = setPCFlagReg;
 assign setPCVal = setPCReg;
 assign predictFlag = predictReg;
 assign predictAddr = commitAddr;
@@ -104,7 +100,6 @@ assign storeId = commitId;
 
 wire hasFree = ~full;
 wire wrongPredict = value[head][0] ^ jump[head];
-wire rdValid = dest[head] != 0;
 
 always @(posedge clockIn) begin
     if (resetIn | (clear & readyIn)) begin
@@ -119,12 +114,12 @@ always @(posedge clockIn) begin
         commitDest <= 0;
         commitVal <= 0;
         clearReg <= 0;
-        setPCFlagReg <= 0;
         setPCReg <= 0;
     end else if (readyIn) begin
         // add entry
         if (addFlag & hasFree) begin
-            busy[tail] <= addType;
+            busy[tail] <= 1;
+            insType[tail] <= addType;
             dest[tail] <= addDest;
             jump[tail] <= addJump;
             PC[tail] <= addPC;
@@ -150,44 +145,31 @@ always @(posedge clockIn) begin
             commitAddr <= insAddr[head];
             commitDest <= dest[head];
             commitId <= head;
-            case (type[head])
+            case (insType[head])
             BRANCH: begin
                 clearReg <= wrongPredict;
-                setPCFlagReg <= wrongPredict;
                 setPCReg <= PC[head];
                 predictReg <= 1;
                 commitVal <= value[head];
                 rfReg <= 0;
                 storeReg <= 0;
             end 
-            JALR: begin
-                clearReg <= 0;
-                setPCFlagReg <= 1;
-                setPCReg <= value[head];
-                predictReg <= 0;
-                commitVal <= PC[head];
-                rfReg <= rdValid;
-                storeReg <= 0;
-            end
             STORE: begin
                 clearReg <= 0;
-                setPCFlagReg <= 0;
                 predictReg <= 0;
                 rfReg <= 0;
                 storeReg <= 1;
             end
-            OTHER: begin
+            default: begin // others
                 clearReg <= 0;
-                setPCFlagReg <= 0;
                 predictReg <= 0;
-                rfReg <= rdValid;
+                rfReg <= 1;
                 commitVal <= value[head];
                 storeReg <= 0;
             end   
             endcase
         end else begin
             clearReg <= 0;
-            setPCFlagReg <= 0;
             predictReg <= 0;
             rfReg <= 0;
             storeReg <= 0;

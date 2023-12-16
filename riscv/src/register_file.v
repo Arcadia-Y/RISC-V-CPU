@@ -51,10 +51,10 @@ always @(posedge clockIn) begin
         busy <= {32{1'b0}};
     end else if (readyIn) begin
         // update registers
-        if (writeFlag)
+        if (writeFlag & (writeAddr != 0))
             registers[writeAddr] <= writeValue;
         // update reorder && busy
-        if (rdFlag) begin
+        if (rdFlag & (rdAddr != 0)) begin
             busy[rdAddr] <= 1'b1;
             reorder[rdAddr] <= rdDest;
             if (writeFlag && writeAddr != rdAddr && reorder[writeAddr] == robId)

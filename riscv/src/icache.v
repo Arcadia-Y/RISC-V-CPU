@@ -9,7 +9,6 @@ module ICache#(
     input wire  readyIn,
 
     // instruction unit
-    input wire  readFlag,
     input wire  [31:0] addrIn,
     output wire hit,
     output wire [31:0] dataOut,
@@ -55,7 +54,7 @@ always @(posedge clockIn) begin
                 memFlagReg <= 0;
             end
         end 
-        else if (readFlag & !hit) begin
+        else if (!hit) begin
             block[index][32+TAG_WIDTH] <= 1'b0;
             addrOutReg <= addrIn;
             memFlagReg <= 1'b1;
