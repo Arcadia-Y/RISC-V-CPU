@@ -1,13 +1,11 @@
 // Memory Controller
-module MemoryController#(
-    parameter ADDR_WIDTH = 17
-)(
+module MemoryController(
     input wire  clockIn,
     input wire  resetIn,
     input wire  readyIn,
 
     input wire  clearIn, // for wrong branch prediction
-    output wire dataOut,
+    output wire [31:0] dataOut,
 
     // icache
     input wire  icacheFlag,
@@ -23,9 +21,10 @@ module MemoryController#(
 
     // ram
     output wire ramSelect, // read:1, write:0
-    output wire [ADDR_WIDTH-1:0] ramAddr,
+    output wire [31:0] ramAddr,
     output wire [7:0] ramOut,
-    input wire  [7:0] ramIn
+    input wire  [7:0] ramIn,
+    input wire  ioBufferFull
 );
 
 parameter IDLE = 2'b00;
@@ -47,11 +46,11 @@ assign icacheOk = icacheOkReg;
 assign ramSelect = state == STORE ? 0 : 1;
 assign ramAddr = state == IDLE ? 
                     lsbFlag ? 
-                        lsbAddr[ADDR_WIDTH-1:0] :
-                    icacheAddr[ADDR_WIDTH-1:0] :
+                        lsbAddr :
+                    icacheAddr :
                  state == IFETCH ? 
-                    icacheAddr[ADDR_WIDTH-1:0] + selector :
-                lsbAddr[ADDR_WIDTH-1:0] + selector;
+                    icacheAddr + selector :
+                lsbAddr + selector;
 assign ramOut = state != STORE ? 0  :
                 selector == 2'b00 ? lsbIn[7:0] :
                 selector == 2'b01 ? lsbIn[15:8] :
@@ -129,12 +128,14 @@ always @(posedge clockIn) begin
                 selector <= selectorPlus;
         end
         STORE: begin
-            if (selector == endPos) begin
-                selector <= 0;
-                state <= IDLE;
-                lsbOkReg <= 1;
-            end else
-                selector <= selectorPlus;
+            if (ramAddr[17:16] != 2'b11 | ~ioBufferFull) begin
+                if (selector == endPos) begin
+                    selector <= 0;
+                    state <= IDLE;
+                    lsbOkReg <= 1;
+                end else
+                    selector <= selectorPlus;
+            end
         end
         endcase
     end

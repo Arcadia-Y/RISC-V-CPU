@@ -1,7 +1,6 @@
 // 2-bit Branch Predictor
 module BranchPredictor#(
-    parameter TABLE_WIDTH = 6,
-    parameter TABLE_SIZE = 2 ** TABLE_WIDTH
+    parameter TABLE_WIDTH = 6
 )(
     input wire  resetIn,
     input wire  clockIn,
@@ -17,6 +16,7 @@ module BranchPredictor#(
     input wire  updateVal
 );
 
+parameter TABLE_SIZE = 2 ** TABLE_WIDTH;
 reg [TABLE_WIDTH-1:0] predictPos;
 reg [1:0] historyTable [TABLE_SIZE-1:0];
 wire [TABLE_WIDTH-1:0] updatePos = updateAddr [TABLE_WIDTH+1:2];
