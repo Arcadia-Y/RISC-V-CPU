@@ -38,14 +38,14 @@ reg [1:0] endPos; // 00 for byte, 01 for halfword, 11 for word
 reg [31:0] buffer;
 reg lsbOkReg;
 reg icacheOkReg;
-wire selectorPlus = selector + 1'b1;
+wire [1:0] selectorPlus = selector + 1'b1;
 
 assign dataOut = buffer;
 assign lsbOk = lsbOkReg;
 assign icacheOk = icacheOkReg;
-assign ramSelect = state == STORE ? 0 : 1;
+assign ramSelect = state == STORE ? 1 : 0;
 assign ramAddr = state == IDLE ? 
-                    lsbFlag ? 
+                    lsbFlag & ~lsbOp[2] ? 
                         lsbAddr :
                     icacheAddr :
                  state == IFETCH ? 

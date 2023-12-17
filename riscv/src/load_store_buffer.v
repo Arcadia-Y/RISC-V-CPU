@@ -84,8 +84,8 @@ assign memOp = {op[head][3], op[head][1:0]};
 assign memAddr = Vj[head] + imm[head];
 assign memDataOut = Vk[head];
 
-wire nextHead = head + 1'b1;
-wire nextTail = tail + 1'b1;
+wire [LSB_WIDTH-1:0] nextHead = head + 1'b1;
+wire [LSB_WIDTH-1:0] nextTail = tail + 1'b1;
 wire headLoad = ~op[head][3];
 wire headUnsigned = op[head][2];
 wire [31:0] toCommit = headUnsigned ? memDataIn :

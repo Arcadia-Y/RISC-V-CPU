@@ -30,12 +30,12 @@ reg [31:0] addrOutReg;
 wire [CACHE_WIDTH-1:0] index = addrIn[CACHE_WIDTH+1:2];
 wire [TAG_WIDTH-1:0] tag = addrIn[CACHE_WIDTH + TAG_WIDTH + 1:CACHE_WIDTH+2];
 wire [32+TAG_WIDTH:0] selected = block[index];
-assign hit = selected[32+TAG_WIDTH] & tag == selected[31+TAG_WIDTH:32];
+assign hit = selected[32+TAG_WIDTH] && tag == selected[31+TAG_WIDTH:32];
 assign dataOut = selected[31:0];
-assign memFlag = memFlagReg;
+assign memFlag = memFlagReg & ~validIn;
 assign addrOut = addrOutReg;
-wire outIndex = addrOut[CACHE_WIDTH+1:2];
-wire outTag = addrOut[CACHE_WIDTH + TAG_WIDTH + 1:CACHE_WIDTH+2];
+wire [CACHE_WIDTH-1:0] outIndex = addrOut[CACHE_WIDTH+1:2];
+wire [TAG_WIDTH-1:0] outTag = addrOut[CACHE_WIDTH + TAG_WIDTH + 1:CACHE_WIDTH+2];
 
 integer i;
 always @(posedge clockIn) begin
@@ -46,7 +46,7 @@ always @(posedge clockIn) begin
             block[i][32+TAG_WIDTH] <= 1'b0;
     end 
     else if (readyIn) begin
-        if (memFlag) begin
+        if (memFlagReg) begin
             if (validIn) begin
                 block[outIndex][31:0] <= dataIn;
                 block[outIndex][31+TAG_WIDTH:32] <= outTag;

@@ -136,10 +136,10 @@ InstructionUnit#(
   .rs1Addr(iuRs1Addr),
   .rs2Addr(iuRs2Addr),
   .rfRs1(rfRs1Val),
-  .rfRs1Id(rfRs1Id),
+  .rfRs1Id(rfRs1Rename),
   .rfRs1Busy(rfRs1Busy),
   .rfRs2(rfRs2Val),
-  .rfRs2Id(rfRs2Id),
+  .rfRs2Id(rfRs2Rename),
   .rfRs2Busy(rfRs2Busy),
 
   .insAddrOut(iuInsAddr),
@@ -173,7 +173,7 @@ InstructionUnit#(
   .outDest(iuOutDest),
   .rsFull(rsFull),
 
-  .lsbFLag(iuLsbFlag),
+  .lsbFlag(iuLsbFlag),
   .lsbOp(iuLsbOp),
   .lsbImm(iuLsbImm),
   .lsbFull(lsbFull)
@@ -252,10 +252,10 @@ RegisterFile#(
   .rdDest(iuRdDest),
   .rs1Addr(iuRs1Addr),
   .rs2Addr(iuRs2Addr),
-  .rs1Value(rfRs1),
+  .rs1Value(rfRs1Val),
   .rs1Rename(rfRs1Rename),
   .rs1Busy(rfRs1Busy),
-  .rs2Value(rfRs2),
+  .rs2Value(rfRs2Val),
   .rs2Rename(rfRs2Rename),
   .rs2Busy(rfRs2Busy),
 

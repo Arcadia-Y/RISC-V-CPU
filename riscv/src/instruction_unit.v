@@ -200,6 +200,7 @@ always@(*) begin
             end else begin
                 robFlag = 1;
                 robType = 2'b11;
+                robValueFlag = 1;
                 lsbFlag = 1;
                 lsbImm = {{20{insReg[31]}}, insReg[31:25], insReg[11:7]};
                 lsbOp[3:2] = 2'b10;
@@ -268,10 +269,10 @@ always @(posedge clockIn) begin
         insReg <= 0;
         insValid <= 0;
     end else if (readyIn) begin
-        if (needJump) begin
+        if (insValid & needJump) begin
             fetchAddr <= jumpPCVal;
             insValid <= 0;
-        end else if (stall) begin
+        end else if (insValid & stall) begin
             insValid <= 1;
         end else if (hit) begin
             PC <= fetchAddr;

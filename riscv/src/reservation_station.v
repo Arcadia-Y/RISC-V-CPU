@@ -150,6 +150,7 @@ always @(posedge clockIn) begin
         end
         // prepare next rs1, rs2
         calcValid <= hasCalc;
+        calcDest <= dest[calcSlot];
         rs1 <= Vj[calcSlot];
         rs2 <= Vk[calcSlot];
         if (hasCalc)

@@ -55,9 +55,9 @@ module ReorderBuffer#(
 );
 
 parameter ROB_SIZE = 2**ROB_WIDTH;
-reg [ROB_WIDTH-1:0] busy;
-reg [ROB_WIDTH-1:0] jump;
-reg [ROB_WIDTH-1:0] ready;
+reg [ROB_SIZE-1:0] busy;
+reg [ROB_SIZE-1:0] jump;
+reg [ROB_SIZE-1:0] ready;
 parameter BRANCH = 2'b10;
 parameter STORE = 2'b11;
 parameter OTHER = 2'b00;
