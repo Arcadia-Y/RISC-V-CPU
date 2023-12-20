@@ -95,7 +95,7 @@ assign freeSlot = ~busy[0] ? 0 :
                   ~busy[13] ? 13 :
                   ~busy[14] ? 14 :
                   15;
-wire [RS_WIDTH-1:0] ready = ~(QjBusy | QkBusy) & busy;
+wire [RS_SIZE-1:0] ready = ~(QjBusy | QkBusy) & busy;
 assign calcSlot = ready[0] ? 0 :
                   ready[1] ? 1 :
                   ready[2] ? 2 :
@@ -134,25 +134,53 @@ always @(posedge clockIn) begin
         rs1 <= 0;
         rs2 <= 0;
         calcOp <= 0;
+        QjBusy <= 0;
+        QkBusy <= 0;
     end
     else if (readyIn) begin
         // add entry
         if (addFlag) begin
             busy[freeSlot] <= 1'b1;
             op[freeSlot] <= addOp;
-            QjBusy[freeSlot] <= addQjBusy;
-            QkBusy[freeSlot] <= addQkBusy;
-            Vj[freeSlot] <= addVj;
-            Vk[freeSlot] <= addVk;
-            Qj[freeSlot] <= addQj;
-            Qk[freeSlot] <= addQk;
             dest[freeSlot] <= addDest;
+            // deal with forward & add in 1 cycle
+            if (addQjBusy) begin
+                if (outFlag & (outDest == addQj)) begin
+                    QjBusy[freeSlot] <= 0;
+                    Vj[freeSlot] <= outVal;
+                end else if (lsbFlag & (lsbDest == addQj)) begin
+                    QjBusy[freeSlot] <= 0;
+                    Vj[freeSlot] <= lsbVal;
+                end else begin
+                    QjBusy[freeSlot] <= 1;
+                    Qj[freeSlot] <= addQj;
+                end
+            end else begin
+                QjBusy[freeSlot] <= 0;
+                Vj[freeSlot] <= addVj;
+            end
+            if (addQkBusy) begin
+                if (outFlag & (outDest == addQk)) begin
+                    QkBusy[freeSlot] <= 0;
+                    Vk[freeSlot] <= outVal;
+                end else if (lsbFlag & (lsbDest == addQk)) begin
+                    QkBusy[freeSlot] <= 0;
+                    Vk[freeSlot] <= lsbVal;
+                end else begin
+                    QkBusy[freeSlot] <= 1;
+                    Qk[freeSlot] <= addQk;
+                end
+            end else begin
+                QkBusy[freeSlot] <= 0;
+                Vk[freeSlot] <= addVk;
+            end
         end
         // prepare next rs1, rs2
         calcValid <= hasCalc;
         calcDest <= dest[calcSlot];
         rs1 <= Vj[calcSlot];
         rs2 <= Vk[calcSlot];
+        calcOp <= op[calcSlot];
         if (hasCalc)
             busy[calcSlot] <= 1'b0;
         // calculate and send out result

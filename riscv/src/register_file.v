@@ -51,8 +51,10 @@ always @(posedge clockIn) begin
         busy <= {32{1'b0}};
     end else if (readyIn) begin
         // update registers
-        if (writeFlag & (writeAddr != 0))
+        if (writeFlag & (writeAddr != 0)) begin
             registers[writeAddr] <= writeValue;
+            //$display("reg %d <- %d", writeAddr, writeValue);
+        end 
         // update reorder && busy
         if (rdFlag & (rdAddr != 0)) begin
             busy[rdAddr] <= 1'b1;

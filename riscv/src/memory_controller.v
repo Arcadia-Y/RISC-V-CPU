@@ -35,6 +35,7 @@ parameter STORE = 2'b11;
 reg [1:0] state; // state for FSM 
 reg [1:0] selector; // byte selector
 reg [1:0] endPos; // 00 for byte, 01 for halfword, 11 for word
+reg loadByte; // to prevent overload for I/O
 reg [31:0] buffer;
 reg lsbOkReg;
 reg icacheOkReg;
@@ -45,12 +46,12 @@ assign lsbOk = lsbOkReg;
 assign icacheOk = icacheOkReg;
 assign ramSelect = state == STORE ? 1 : 0;
 assign ramAddr = state == IDLE ? 
-                    lsbFlag & ~lsbOp[2] ? 
-                        lsbAddr :
-                    icacheAddr :
-                 state == IFETCH ? 
-                    icacheAddr + selector :
-                lsbAddr + selector;
+                   lsbFlag & ~lsbOp[2] ? 
+                     lsbAddr :
+                     icacheAddr :
+                 state == IFETCH | loadByte ? 
+                   icacheAddr + selector :
+                   lsbAddr + selector;
 assign ramOut = state != STORE ? 0  :
                 selector == 2'b00 ? lsbIn[7:0] :
                 selector == 2'b01 ? lsbIn[15:8] :
@@ -65,12 +66,14 @@ always @(posedge clockIn) begin
         buffer <= 0;
         lsbOkReg <= 0;
         icacheOkReg <= 0;
+        loadByte <= 0;
     end else if (clearIn & readyIn & (state != STORE)) begin
         state <= IDLE;
         selector <= 0;
         lsbOkReg <= 0;
         icacheOkReg <= 0;
         endPos <= 0;
+        loadByte <= 0;
     end else if (readyIn) begin
         case (state)
         IDLE: begin
@@ -83,9 +86,10 @@ always @(posedge clockIn) begin
                     selector <= 0;
                 end else begin // LOAD
                     state <= LOAD;
-                    if (lsbOp[1:0] == 2'b00)
+                    if (lsbOp[1:0] == 2'b00) begin
                         selector <= 0;
-                    else
+                        loadByte <= 1;
+                    end else
                         selector <= 1;
                 end
             end else if (icacheFlag) begin
@@ -121,14 +125,16 @@ always @(posedge clockIn) begin
             endcase
             if (selector == 2'b00) begin
                 state <= IDLE;
+                loadByte <= 0;
                 lsbOkReg <= 1;
-            end else if (selector == endPos)
+            end else if (selector == endPos) begin
                 selector <= 0;
-            else
+            end else
                 selector <= selectorPlus;
         end
         STORE: begin
             if (ramAddr[17:16] != 2'b11 | ~ioBufferFull) begin
+                // $display("mem %d <- %d", ramAddr, ramOut);
                 if (selector == endPos) begin
                     selector <= 0;
                     state <= IDLE;

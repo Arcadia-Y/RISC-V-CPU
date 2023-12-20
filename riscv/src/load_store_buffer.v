@@ -88,10 +88,15 @@ wire [LSB_WIDTH-1:0] nextHead = head + 1'b1;
 wire [LSB_WIDTH-1:0] nextTail = tail + 1'b1;
 wire headLoad = ~op[head][3];
 wire headUnsigned = op[head][2];
-wire [31:0] toCommit = headUnsigned ? memDataIn :
-                       head[1] ? memDataIn :
-                       head[0] ? {{16{memDataIn[15]}}, memDataIn[15:0]} :
-                       {{24{memDataIn[7]}}, memDataIn[7:0]};
+wire headWord = op[head][1];
+wire headHalf = op[head][0];
+wire [31:0] toCommit = headUnsigned ? 
+                         headWord ? memDataIn :
+                         headHalf ? memDataIn[15:0] :
+                                    memDataIn[7:0] :
+                         headWord ? memDataIn :
+                         headHalf ? {{16{memDataIn[15]}}, memDataIn[15:0]} :
+                         {{24{memDataIn[7]}}, memDataIn[7:0]};
 
 integer i;
 always @(posedge clockIn) begin
@@ -130,16 +135,41 @@ always @(posedge clockIn) begin
             busy[tail] <= 1'b1;
             op[tail] <= addOp;
             commited[tail] <= 1'b0;
-            Vj[tail] <= addVj;
-            Vk[tail] <= addVk;
-            QjBusy[tail] <= addQjBusy;
-            QkBusy[tail] <= addQkBusy;
-            Qj[tail] <= addQj;
-            Qk[tail] <= addQk;
-            imm[tail] <= addImm;
             dest[tail] <= addDest;
             tail <= nextTail;
-        end
+            imm[tail] <= addImm;
+            // deal with forward & add in 1 cycle
+            if (addQjBusy) begin
+                if (outFlag & (outDest == addQj)) begin
+                    QjBusy[tail] <= 0;
+                    Vj[tail] <= outVal;
+                end else if (aluFlag & (aluDest == addQj)) begin
+                    QjBusy[tail] <= 0;
+                    Vj[tail] <= aluVal;
+                end else begin
+                    QjBusy[tail] <= 1;
+                    Qj[tail] <= addQj;
+                end
+            end else begin
+                QjBusy[tail] <= 0;
+                Vj[tail] <= addVj;
+            end
+            if (addQkBusy) begin
+                if (outFlag & (outDest == addQk)) begin
+                    QkBusy[tail] <= 0;
+                    Vk[tail] <= outVal;
+                end else if (aluFlag & (aluDest == addQk)) begin
+                    QkBusy[tail] <= 0;
+                    Vk[tail] <= aluVal;
+                end else begin
+                    QkBusy[tail] <= 1;
+                    Qk[tail] <= addQk;
+                end
+            end else begin
+                QkBusy[tail] <= 0;
+                Vk[tail] <= addVk;
+            end
+        end   
         // process load/store
         if (busy[head]) begin
             if (headLoad) begin // load
@@ -151,7 +181,7 @@ always @(posedge clockIn) begin
                     busy[head] <= 1'b0;
                     head <= nextHead;
                 end else if (~memOutReg) begin // before loading
-                    memOutReg <= QjBusy[head];
+                    memOutReg <= ~QjBusy[head];
                 end
             end else begin // store
                 if (memOutReg & memOkFlag) begin // store complete
@@ -188,7 +218,7 @@ always @(posedge clockIn) begin
                 end
                 if (QkBusy[i] & (Qk[i] == outDest)) begin
                     QkBusy[i] <= 1'b0;
-                    Qk[i] <= outVal;
+                    Vk[i] <= outVal;
                 end
             end
         end
