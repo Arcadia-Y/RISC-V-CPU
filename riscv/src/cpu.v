@@ -303,7 +303,7 @@ MemoryController memoryController(
   .ramAddr(mem_a),
   .ramOut(mem_dout),
   .ramIn(mem_din),
-  .ioBufferFull(io_buffer_full)
+  .ioBufferFull(1'b0)
 );
 
 LoadStoreBuffer#(
@@ -331,7 +331,7 @@ LoadStoreBuffer#(
   .aluVal(rsOutVal),
   .aluDest(rsOutDest),
 
-  .robFLag(robStoreFlag),
+  .robFlag(robStoreFlag),
   .robDest(robStoreId),
   
   .outFlag(lsbOutFlag),

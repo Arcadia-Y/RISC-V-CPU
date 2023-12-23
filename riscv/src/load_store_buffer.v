@@ -29,7 +29,7 @@ module LoadStoreBuffer#(
     input wire  [ROB_WIDTH-1:0] aluDest,
 
     // ROB commit (for store)  
-    input wire  robFLag,
+    input wire  robFlag,
     input wire  [ROB_WIDTH-1:0] robDest,
 
     // write results & forward (for load)
@@ -112,14 +112,14 @@ always @(posedge clockIn) begin
             QkBusy[i] <= 1'b0;
         end
     end
-    else if (clearIn & readyIn & busy[head]) begin
+    else if (clearIn & readyIn) begin
         for (i = 0; i < LSB_SIZE; i = i + 1)
-            if (~commited[i])
+            if (~commited[i]) begin
                 busy[i] <= 1'b0;
-        if (headLoad) begin
-            tail <= head;
-            memOutReg <= 1'b0;
-        end else begin
+                QjBusy[i] <= 1'b0;
+                QkBusy[i] <= 1'b0;
+            end
+        if (commited[head] & busy[head]) begin
             tail <= lastCommit + 1'b1;
             if (memOutReg & memOkFlag) begin // store complete
                 memOutReg <= 1'b0;
@@ -127,6 +127,9 @@ always @(posedge clockIn) begin
                 commited[head] <= 1'b0;
                 head <= nextHead;
             end
+        end else begin
+            tail <= head;
+            memOutReg <= 1'b0;
         end
     end
     else if (readyIn) begin
@@ -190,7 +193,7 @@ always @(posedge clockIn) begin
                     commited[head] <= 1'b0;
                     head <= nextHead;
                 end else if (~memOutReg & (commited[head] | 
-                    (robFLag & (dest[head] == robDest)))) begin // before storing
+                    (robFlag & (dest[head] == robDest)))) begin // before storing
                     memOutReg <= 1'b1;
                 end
             end
@@ -204,7 +207,7 @@ always @(posedge clockIn) begin
                 end
                 if (QkBusy[i] & (Qk[i] == aluDest)) begin
                     QkBusy[i] <= 1'b0;
-                    Qk[i] <= aluVal;
+                    Vk[i] <= aluVal;
                 end
             end
         end
@@ -223,7 +226,7 @@ always @(posedge clockIn) begin
             end
         end
         // update commited from rob
-        if (robFLag) begin
+        if (robFlag) begin
             for (i = 0; i < LSB_SIZE; i = i + 1)
                 if (busy[i] & (dest[i] == robDest) & ~commited[i]) begin
                     commited[i] <= 1'b1;

@@ -39,6 +39,13 @@ assign rs2Value = registers[rs2Addr];
 assign rs2Busy = busy[rs2Addr];
 assign rs2Rename = reorder[rs2Addr];
 
+`ifdef DEBUG
+integer fileHandle;
+initial begin
+    fileHandle = $fopen("reg.txt");
+end
+`endif
+
 integer i;
 always @(posedge clockIn) begin
     if (resetIn) begin
@@ -47,13 +54,15 @@ always @(posedge clockIn) begin
             busy[i] <= 1'b0;
             reorder[i] <= 0;
         end
-    end else if (clearIn) begin
+    end else if (clearIn & readyIn) begin
         busy <= {32{1'b0}};
     end else if (readyIn) begin
         // update registers
         if (writeFlag & (writeAddr != 0)) begin
             registers[writeAddr] <= writeValue;
-            //$display("reg %d <- %d", writeAddr, writeValue);
+            `ifdef DEBUG
+            $fdisplay(fileHandle, "reg %d <- %d", writeAddr, writeValue);
+            `endif
         end 
         // update reorder && busy
         if (rdFlag & (rdAddr != 0)) begin

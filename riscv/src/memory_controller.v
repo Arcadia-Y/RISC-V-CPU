@@ -39,12 +39,15 @@ reg loadByte; // to prevent overload for I/O
 reg [31:0] buffer;
 reg lsbOkReg;
 reg icacheOkReg;
+reg [7:0] ramOutReg;
+reg ramSelectReg;
 wire [1:0] selectorPlus = selector + 1'b1;
 
 assign dataOut = buffer;
 assign lsbOk = lsbOkReg;
 assign icacheOk = icacheOkReg;
-assign ramSelect = state == STORE ? 1 : 0;
+assign ramSelect = ramSelectReg;
+assign ramOut = ramOutReg;
 assign ramAddr = state == IDLE ? 
                    lsbFlag & ~lsbOp[2] ? 
                      lsbAddr :
@@ -52,11 +55,13 @@ assign ramAddr = state == IDLE ?
                  state == IFETCH | loadByte ? 
                    icacheAddr + selector :
                    lsbAddr + selector;
-assign ramOut = state != STORE ? 0  :
-                selector == 2'b00 ? lsbIn[7:0] :
-                selector == 2'b01 ? lsbIn[15:8] :
-                selector == 2'b10 ? lsbIn[23:16] :
-                lsbIn[31:24];
+
+`ifdef DEBUG
+integer fileHandle;
+initial begin
+    fileHandle = $fopen("mem.txt");
+end
+`endif
 
 always @(posedge clockIn) begin
     if (resetIn) begin
@@ -67,6 +72,8 @@ always @(posedge clockIn) begin
         lsbOkReg <= 0;
         icacheOkReg <= 0;
         loadByte <= 0;
+        ramOutReg <= 0;
+        ramSelectReg <= 0;
     end else if (clearIn & readyIn & (state != STORE)) begin
         state <= IDLE;
         selector <= 0;
@@ -74,6 +81,8 @@ always @(posedge clockIn) begin
         icacheOkReg <= 0;
         endPos <= 0;
         loadByte <= 0;
+        ramOutReg <= 0;
+        ramSelectReg <= 0;
     end else if (readyIn) begin
         case (state)
         IDLE: begin
@@ -84,6 +93,8 @@ always @(posedge clockIn) begin
                 if (lsbOp[2]) begin // STORE
                     state <= STORE;
                     selector <= 0;
+                    ramOutReg <= lsbIn[7:0];
+                    ramSelectReg <= 1;
                 end else begin // LOAD
                     state <= LOAD;
                     if (lsbOp[1:0] == 2'b00) begin
@@ -134,13 +145,22 @@ always @(posedge clockIn) begin
         end
         STORE: begin
             if (ramAddr[17:16] != 2'b11 | ~ioBufferFull) begin
-                // $display("mem %d <- %d", ramAddr, ramOut);
+                `ifdef DEBUG
+                $fdisplay(fileHandle, "mem %d <- %d", ramAddr, ramOut);
+                `endif
                 if (selector == endPos) begin
                     selector <= 0;
                     state <= IDLE;
                     lsbOkReg <= 1;
-                end else
+                    ramSelectReg <= 0;
+                end else begin
                     selector <= selectorPlus;
+                    case (selector)
+                        2'b00: ramOutReg <= lsbIn[15:8];
+                        2'b01: ramOutReg <= lsbIn[23:16];
+                        2'b10: ramOutReg <= lsbIn[31:24];
+                    endcase
+                end
             end
         end
         endcase
