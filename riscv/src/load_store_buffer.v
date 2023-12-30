@@ -74,6 +74,8 @@ reg outFlagReg;
 reg [31:0] outValReg;
 reg [ROB_WIDTH-1:0] outDestReg;
 reg [LSB_SIZE-1:0] lastCommit;
+reg [31:0] memAddrReg;
+reg [31:0] memDataReg;
 
 assign full = (tail == head) & busy[0];
 assign memOutFlag = memOutReg & ~memOkFlag; // to avoid duplicate read/write
@@ -81,8 +83,8 @@ assign outFlag = outFlagReg;
 assign outVal = outValReg;
 assign outDest = outDestReg;
 assign memOp = {op[head][3], op[head][1:0]};
-assign memAddr = Vj[head] + imm[head];
-assign memDataOut = Vk[head];
+assign memAddr = memAddrReg;
+assign memDataOut = memDataReg;
 
 wire [LSB_WIDTH-1:0] nextHead = head + 1'b1;
 wire [LSB_WIDTH-1:0] nextTail = tail + 1'b1;
@@ -107,6 +109,8 @@ always @(posedge clockIn) begin
         tail <= 0;
         memOutReg <= 1'b0;
         outFlagReg <= 1'b0;
+        memAddrReg <= 0;
+        memDataReg <= 0;
         for (i = 0; i < LSB_SIZE; i = i + 1) begin
             QjBusy[i] <= 1'b0;
             QkBusy[i] <= 1'b0;
@@ -183,8 +187,9 @@ always @(posedge clockIn) begin
                     memOutReg <= 1'b0;
                     busy[head] <= 1'b0;
                     head <= nextHead;
-                end else if (~memOutReg) begin // before loading
-                    memOutReg <= ~QjBusy[head];
+                end else if (~memOutReg & ~QjBusy[head]) begin // before loading
+                    memOutReg <= 1'b1;
+                    memAddrReg <= Vj[head] + imm[head];
                 end
             end else begin // store
                 if (memOutReg & memOkFlag) begin // store complete
@@ -195,6 +200,8 @@ always @(posedge clockIn) begin
                 end else if (~memOutReg & (commited[head] | 
                     (robFlag & (dest[head] == robDest)))) begin // before storing
                     memOutReg <= 1'b1;
+                    memAddrReg <= Vj[head] + imm[head];
+                    memDataReg <= Vk[head];
                 end
             end
         end

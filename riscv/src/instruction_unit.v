@@ -87,8 +87,10 @@ wire [31:0] immS = {{20{insReg[31]}}, insReg[31:25], insReg[11:7]};
 
 assign rdAddr = rd;
 assign rdDest = robFree;
-assign rs1Addr = rs1;
-assign rs2Addr = rs2;
+assign rs1Addr = insValid & stall ? rs1 : 
+                   hit ? icacheIn[19:15] : 0;
+assign rs2Addr = insValid & stall ? rs2 : 
+                   hit ? icacheIn[24:20] : 0;
 assign insAddrOut = PC;
 assign robJump = predictJump;
 assign robRs1Id = rfRs1Id;
