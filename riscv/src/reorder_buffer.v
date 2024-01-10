@@ -51,7 +51,8 @@ module ReorderBuffer#(
     input wire  [ROB_WIDTH-1:0] loadId,
     input wire  [31:0] loadValue,
     output wire storeFlag,
-    output wire [ROB_WIDTH-1:0] storeId
+    output wire [ROB_WIDTH-1:0] storeId,
+    output wire [ROB_WIDTH-1:0] headId
 );
 
 parameter ROB_SIZE = 2**ROB_WIDTH;
@@ -97,6 +98,7 @@ assign rfDest = commitDest;
 assign rfValue = commitVal;
 assign storeFlag = storeReg;
 assign storeId = commitId;
+assign headId = head;
 
 wire hasFree = ~full;
 wire wrongPredict = value[head][0] ^ jump[head];

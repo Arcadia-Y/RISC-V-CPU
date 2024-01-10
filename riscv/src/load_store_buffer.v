@@ -31,6 +31,7 @@ module LoadStoreBuffer#(
     // ROB commit (for store)  
     input wire  robFlag,
     input wire  [ROB_WIDTH-1:0] robDest,
+    input wire  [ROB_WIDTH-1:0] robHead, // prevent redundent input
 
     // write results & forward (for load)
     output wire outFlag,
@@ -92,6 +93,7 @@ wire headLoad = ~op[head][3];
 wire headUnsigned = op[head][2];
 wire headWord = op[head][1];
 wire headHalf = op[head][0];
+wire [31:0] headAddr = Vj[head] + imm[head];
 wire [31:0] toCommit = headUnsigned ? 
                          headWord ? memDataIn :
                          headHalf ? memDataIn[15:0] :
@@ -188,8 +190,10 @@ always @(posedge clockIn) begin
                     busy[head] <= 1'b0;
                     head <= nextHead;
                 end else if (~memOutReg & ~QjBusy[head]) begin // before loading
-                    memOutReg <= 1'b1;
-                    memAddrReg <= Vj[head] + imm[head];
+                    if (Vj[head][17:16] != 2'b11 | dest[head] == robHead) begin
+                        memOutReg <= 1'b1;
+                        memAddrReg <= headAddr;
+                    end
                 end
             end else begin // store
                 if (memOutReg & memOkFlag) begin // store complete
@@ -200,7 +204,7 @@ always @(posedge clockIn) begin
                 end else if (~memOutReg & (commited[head] | 
                     (robFlag & (dest[head] == robDest)))) begin // before storing
                     memOutReg <= 1'b1;
-                    memAddrReg <= Vj[head] + imm[head];
+                    memAddrReg <= headAddr;
                     memDataReg <= Vk[head];
                 end
             end

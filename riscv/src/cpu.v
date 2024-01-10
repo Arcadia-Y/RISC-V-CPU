@@ -79,6 +79,7 @@ wire [4:0] robRfDest;
 wire [31:0] robRfVal;
 wire robStoreFlag;
 wire [ROB_WIDTH-1:0] robStoreId;
+wire [ROB_WIDTH-1:0] robHead;
 
 // predictor
 wire predictJump;
@@ -223,7 +224,8 @@ ReorderBuffer#(
   .loadId(lsbOutDest),
   .loadValue(lsbOutVal),
   .storeFlag(robStoreFlag),
-  .storeId(robStoreId)
+  .storeId(robStoreId),
+  .headId(robHead)
 );
 
 BranchPredictor#(
@@ -303,7 +305,7 @@ MemoryController memoryController(
   .ramAddr(mem_a),
   .ramOut(mem_dout),
   .ramIn(mem_din),
-  .ioBufferFull(1'b0)
+  .ioBufferFull(io_buffer_full)
 );
 
 LoadStoreBuffer#(
@@ -333,6 +335,7 @@ LoadStoreBuffer#(
 
   .robFlag(robStoreFlag),
   .robDest(robStoreId),
+  .robHead(robHead),
   
   .outFlag(lsbOutFlag),
   .outVal(lsbOutVal),
